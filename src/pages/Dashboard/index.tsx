@@ -28,7 +28,7 @@ const Dashboard: FC = () => {
   if (loading) {
     return (
       <div
-        style={{ fontSize: '30px' }}
+        style={{ fontSize: '28px' }}
         className='d-flex align-items-center justify-content-center text-white flex-fill'
       >
         <FontAwesomeIcon
