@@ -1,19 +1,18 @@
 import { useEffect } from 'react';
 
 import {
-  useGetAccountInfo,
-  transactionServices
-} from '@elrondnetwork/dapp-core';
-import {
   Query,
-  ProxyProvider,
   ContractFunction,
   Address,
   decodeBigNumber,
   decodeUnsignedNumber,
   decodeString,
   AddressValue
-} from '@elrondnetwork/erdjs';
+} from '@multiversx/sdk-core';
+
+import { useGetAccountInfo } from '@multiversx/sdk-dapp/hooks/account/useGetAccountInfo';
+import { useGetSuccessfulTransactions } from '@multiversx/sdk-dapp/hooks/transactions/useGetSuccessfulTransactions';
+import { ProxyNetworkProvider } from '@multiversx/sdk-network-providers';
 
 import { network, auctionContract } from 'config';
 import { useDispatch } from 'context';
@@ -35,7 +34,11 @@ interface globalFetchesType {
   };
   getNodesNumber: {
     key: string;
-    handler: () => Promise<Array<Buffer> | string>;
+    handler: () => Promise<Buffer[] | string>;
+  };
+  getNodesStates: {
+    key: string;
+    handler: () => Promise<Buffer[] | string>;
   };
   getTotalActiveStake: {
     key: string;
@@ -53,11 +56,11 @@ interface globalFetchesType {
 
 const useGlobalData = () => {
   const { address } = useGetAccountInfo();
-  const { successfulTransactionsArray } =
-    transactionServices.useGetSuccessfulTransactions();
+  const { hasSuccessfulTransactions, successfulTransactionsArray } =
+    useGetSuccessfulTransactions();
 
   const dispatch = useDispatch();
-  const provider = new ProxyProvider(network.gatewayAddress);
+  const provider = new ProxyNetworkProvider(network.gatewayAddress);
   const criticalFetches: globalFetchesType = {
     getContractDetails: {
       key: 'contractDetails',
@@ -69,7 +72,7 @@ const useGlobalData = () => {
           });
 
           const data = await provider.queryContract(query);
-          const response = data.outputUntyped();
+          const response = data.getReturnDataParts();
 
           const ownerAddressIndex = 0;
           const serviceFeeIndex = 1;
@@ -103,7 +106,7 @@ const useGlobalData = () => {
     },
     getNodesNumber: {
       key: 'nodesNumber',
-      handler: async (): Promise<Array<Buffer> | string> => {
+      handler: async (): Promise<Buffer[] | string> => {
         try {
           const query = new Query({
             address: new Address(auctionContract),
@@ -112,7 +115,25 @@ const useGlobalData = () => {
           });
 
           const data = await provider.queryContract(query);
-          const response = data.outputUntyped();
+          const response = data.getReturnDataParts();
+
+          return response;
+        } catch (error) {
+          return Promise.reject(error);
+        }
+      }
+    },
+    getNodesStates: {
+      key: 'nodesStates',
+      handler: async (): Promise<Buffer[] | string> => {
+        try {
+          const query = new Query({
+            address: new Address(network.delegationContract),
+            func: new ContractFunction('getAllNodeStates')
+          });
+
+          const data = await provider.queryContract(query);
+          const response = data.getReturnDataParts();
 
           return response;
         } catch (error) {
@@ -130,7 +151,7 @@ const useGlobalData = () => {
           });
 
           const data = await provider.queryContract(query);
-          const [totalNodes] = data.outputUntyped();
+          const [totalNodes] = data.getReturnDataParts();
 
           return decodeBigNumber(totalNodes).toFixed();
         } catch (error) {
@@ -149,7 +170,11 @@ const useGlobalData = () => {
           });
 
           const data = await provider.queryContract(query);
-          const [userStake] = data.outputUntyped();
+          const [userStake] = data.getReturnDataParts();
+
+          if (!userStake) {
+            return '0';
+          }
 
           return decodeBigNumber(userStake).toFixed();
         } catch (error) {
@@ -203,7 +228,12 @@ const useGlobalData = () => {
     fetchData();
   };
 
-  useEffect(fetchCriticalData, [successfulTransactionsArray.length]);
+  useEffect(fetchCriticalData, []);
+  useEffect(() => {
+    if (hasSuccessfulTransactions && successfulTransactionsArray.length > 0) {
+      fetchCriticalData();
+    }
+  }, [hasSuccessfulTransactions, successfulTransactionsArray.length]);
 };
 
 export default useGlobalData;

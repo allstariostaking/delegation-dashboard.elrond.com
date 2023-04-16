@@ -10,7 +10,12 @@ export interface StateType {
   nodesNumber: {
     status: StatusType;
     error: ErrorType;
-    data: null | Array<Uint8Array>;
+    data: null | Uint8Array[];
+  };
+  nodesStates: {
+    status: StatusType;
+    error: ErrorType;
+    data: null | Uint8Array[];
   };
   contractDetails: {
     status: StatusType;
@@ -47,7 +52,7 @@ export interface StateType {
   undelegatedStakeList: {
     status: StatusType;
     error: ErrorType;
-    data: null | Array<UndelegateStakeListType>;
+    data: null | UndelegateStakeListType[];
   };
   totalNetworkStake: {
     status: StatusType;
@@ -77,6 +82,11 @@ export interface StateType {
 
 export const initializer: StateType = {
   nodesNumber: {
+    status: 'idle',
+    data: null,
+    error: null
+  },
+  nodesStates: {
     status: 'idle',
     data: null,
     error: null
